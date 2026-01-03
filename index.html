@@ -40,7 +40,7 @@ h1 {
 }
 
 .subtitle {
-  color: #90caf9;
+  color: #ffffff;
   font-size: 1.2em;
   font-style: italic;
 }
@@ -203,10 +203,12 @@ h1 {
   border: 1px solid #333;
   text-align: center;
   vertical-align: middle;
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: bold;
   cursor: pointer;
   transition: all 0.2s;
   background: #0a0a0a;
+  color: #ffffff;
 }
 
 .fret:hover {
@@ -320,7 +322,7 @@ h1 {
 .chord-name {
   font-size: 1.8em;
   font-weight: bold;
-  color: #fff;
+  color: #ffffff;
   margin-bottom: 10px;
 }
 
@@ -331,20 +333,20 @@ h1 {
 }
 
 .scale-tag {
-  background: rgba(66, 165, 245, 0.2);
+  background: #1a3a5a;
   border: 1px solid #42a5f5;
   padding: 6px 12px;
   border-radius: 20px;
   font-size: 0.85em;
-  color: #90caf9;
+  color: #ffffff;
   transition: all 0.2s;
   cursor: pointer;
 }
 
 .scale-tag:hover {
-  background: rgba(102, 187, 106, 0.3);
+  background: #2e4e2e;
   border-color: #66bb6a;
-  color: #66bb6a;
+  color: #ffffff;
   transform: scale(1.05);
 }
 
@@ -388,14 +390,14 @@ h1 {
 
 .scale-name {
   font-weight: bold;
-  color: #fff;
+  color: #ffffff;
   margin-bottom: 5px;
   font-size: 1.1em;
 }
 
 .scale-notes {
   font-size: 0.9em;
-  color: #90caf9;
+  color: #ffffff;
   font-family: 'Courier New', monospace;
 }
 
@@ -478,7 +480,7 @@ h1 {
 }
 
 .stat-label {
-  color: #ccc;
+  color: #ffffff;
   font-size: 1em;
 }
 
@@ -699,7 +701,7 @@ h1 {
   <div id="scales" class="tab-content">
     <div class="section">
       <h2 class="section-title">📚 Complete Scale Library</h2>
-      <p style="text-align: center; color: #ccc; margin-bottom: 20px;">
+      <p style="text-align: center; color: #ffffff; margin-bottom: 20px;">
         Click any scale to hear it and see it on the fretboard
       </p>
       <div id="scaleLibrary" class="scale-library"></div>
@@ -711,6 +713,12 @@ h1 {
   <div id="fretboard" class="tab-content">
     <div class="section">
       <h2 class="section-title" id="fretboardTitle">🎸 Interactive Fretboard</h2>
+      <div class="controls" style="justify-content: center; margin-bottom: 20px;">
+        <label style="color: #fff; display: flex; align-items: center; gap: 10px; cursor: pointer;">
+          <input type="checkbox" id="showScaleDegrees" onchange="updateFretboardDisplay()" style="width: 20px; height: 20px; cursor: pointer;">
+          <span style="font-size: 1.1em;">Show Scale Degrees (1-2-3-4-5-6-7)</span>
+        </label>
+      </div>
       <div class="legend">
         <div class="legend-item">
           <div class="legend-box" style="background: #66bb6a;"></div>
@@ -767,13 +775,13 @@ h1 {
   <div id="ear" class="tab-content">
     <div class="section ear-training-section">
       <h2 class="section-title">👂 Interval Ear Training</h2>
-      <p style="color: #ccc; margin-bottom: 20px;">
+      <p style="color: #ffffff; margin-bottom: 20px;">
         Listen to the interval and identify it
       </p>
       <button class="btn" onclick="playRandomInterval()">Play Random Interval</button>
       <div class="note-buttons" id="intervalButtons"></div>
       <div id="earFeedback" class="feedback"></div>
-      <div style="margin-top: 20px; color: #ccc;">
+      <div style="margin-top: 20px; color: #ffffff;">
         <p>Score: <span id="earScore" style="color: #66bb6a; font-weight: bold;">0</span> / <span id="earTotal">0</span></p>
       </div>
     </div>
@@ -1244,6 +1252,17 @@ h1 {
     }
 
     function showScaleOnFretboard(scaleName, notes, root) {
+      // Store current scale info for updating display
+      window.currentScale = { scaleName, notes, root };
+      updateFretboardDisplay();
+    }
+
+    function updateFretboardDisplay() {
+      if (!window.currentScale) return;
+      
+      const { scaleName, notes, root } = window.currentScale;
+      const showDegrees = document.getElementById('showScaleDegrees').checked;
+      
       document.querySelectorAll('.fret').forEach(f => {
         f.classList.remove('highlighted', 'root', 'sub', 'dom', 'alt');
       });
@@ -1254,6 +1273,14 @@ h1 {
         '6': 'sub', 'b7': 'dom', '7': 'dom'
       };
       
+      const degreeMap = { 
+        0: '1', 1: 'b2', 2: '2', 3: 'b3', 4: '3', 5: '4', 
+        6: 'b5', 7: '5', 8: '#5', 9: '6', 10: 'b7', 11: '7' 
+      };
+      
+      const scaleDegreesSimple = ['1', '2', '3', '4', '5', '6', '7'];
+      let degreeCounter = {};
+      
       document.querySelectorAll('.fret').forEach(fret => {
         const note = fret.dataset.note;
         if (notes.includes(note)) {
@@ -1261,12 +1288,24 @@ h1 {
           const noteIndex = chromaticScale.indexOf(note);
           const interval = (noteIndex - rootIndex + 12) % 12;
           
-          const degreeMap = { 0: '1', 1: 'b2', 2: '2', 3: 'b3', 4: '3', 5: '4', 6: 'b5', 7: '5', 8: '#5', 9: '6', 10: 'b7', 11: '7' };
           const degree = degreeMap[interval];
           const func = degreeFunctions[degree] || 'alt';
           
           fret.classList.add('highlighted', func);
           if (note === root) fret.classList.add('root');
+          
+          // Update text based on toggle
+          if (showDegrees) {
+            // Find which scale degree this is (1-7)
+            const scaleIndex = notes.indexOf(note);
+            if (scaleIndex !== -1 && scaleIndex < scaleDegreesSimple.length) {
+              fret.textContent = scaleDegreesSimple[scaleIndex];
+            } else {
+              fret.textContent = degree;
+            }
+          } else {
+            fret.textContent = note;
+          }
         }
       });
       
