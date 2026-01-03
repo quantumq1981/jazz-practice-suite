@@ -846,7 +846,12 @@ h1 {
 
     function initAudioContext() {
       if (!audioContext) {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        try {
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        } catch (e) {
+          console.warn('Audio not available:', e);
+          return null;
+        }
       }
       return audioContext;
     }
@@ -970,8 +975,6 @@ h1 {
 
     // Transpose chord to key
     function transposeChord(chord, fromKey, toKey) {
-      console.log('Transposing:', chord, 'from', fromKey, 'to', toKey);
-      
       // Handle Roman numerals - convert to actual chord
       const romanToInterval = {
         'I': 0, 'bII': 1, 'II': 2, 'bIII': 3, 'III': 4, 'IV': 5,
@@ -989,7 +992,6 @@ h1 {
         
         const interval = romanToInterval[roman];
         if (interval === undefined) {
-          console.error('Unknown Roman numeral:', roman);
           return chord;
         }
         
@@ -997,15 +999,12 @@ h1 {
         const noteIndex = (toKeyIndex + interval) % 12;
         const note = chromaticScale[noteIndex];
         
-        const result = note + suffix;
-        console.log('Converted Roman numeral:', chord, '→', result);
-        return result;
+        return note + suffix;
       }
       
       // It's already a letter-based chord - just transpose it
       const rootMatch = chord.match(/^[A-G][b#]?/);
       if (!rootMatch) {
-        console.warn('Could not parse chord:', chord);
         return chord;
       }
       
@@ -1033,23 +1032,30 @@ h1 {
     // Play note
     function playNote(frequency, duration = 0.3, startTime = 0) {
       const ctx = initAudioContext();
-      const oscillator = ctx.createOscillator();
-      const gainNode = ctx.createGain();
+      if (!ctx) return null;
       
-      oscillator.connect(gainNode);
-      gainNode.connect(ctx.destination);
-      
-      oscillator.frequency.value = frequency;
-      oscillator.type = 'sine';
-      
-      gainNode.gain.setValueAtTime(0, ctx.currentTime + startTime);
-      gainNode.gain.linearRampToValueAtTime(0.3, ctx.currentTime + startTime + 0.01);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + startTime + duration);
-      
-      oscillator.start(ctx.currentTime + startTime);
-      oscillator.stop(ctx.currentTime + startTime + duration);
-      
-      return oscillator;
+      try {
+        const oscillator = ctx.createOscillator();
+        const gainNode = ctx.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(ctx.destination);
+        
+        oscillator.frequency.value = frequency;
+        oscillator.type = 'sine';
+        
+        gainNode.gain.setValueAtTime(0, ctx.currentTime + startTime);
+        gainNode.gain.linearRampToValueAtTime(0.3, ctx.currentTime + startTime + 0.01);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + startTime + duration);
+        
+        oscillator.start(ctx.currentTime + startTime);
+        oscillator.stop(ctx.currentTime + startTime + duration);
+        
+        return oscillator;
+      } catch (e) {
+        console.warn('Audio playback failed:', e);
+        return null;
+      }
     }
 
     // Play scale
@@ -1067,36 +1073,31 @@ h1 {
     function generateNewProgression() {
       const typeSelect = document.getElementById('bluesType');
       const keySelect = document.getElementById('bluesKey');
+      
+      if (!typeSelect || !keySelect) {
+        return;
+      }
+      
       const progressionIndex = parseInt(typeSelect.value);
       currentKey = keySelect.value;
       
-      console.log('Generating progression:', progressionIndex, 'in key:', currentKey);
       currentProgression = bluesProgressions[progressionIndex];
-      console.log('Current progression:', currentProgression);
       displayProgression();
     }
 
     function regenerateProgression() {
       if (currentProgression) {
         currentKey = document.getElementById('bluesKey').value;
-        console.log('Regenerating in key:', currentKey);
         displayProgression();
       }
     }
 
     function displayProgression() {
       const display = document.getElementById('progressionDisplay');
-      if (!display) {
-        console.error('progressionDisplay element not found!');
+      if (!display || !currentProgression) {
         return;
       }
       
-      if (!currentProgression) {
-        console.error('No current progression!');
-        return;
-      }
-      
-      console.log('Displaying progression with', currentProgression.bars.length, 'bars');
       display.innerHTML = '';
       
       currentProgression.bars.forEach((bar, index) => {
@@ -1119,16 +1120,12 @@ h1 {
             if (rootMatch) {
               const rootNote = rootMatch[0];
               highlightChordTones(rootNote, transposedChord);
-            } else {
-              console.error('Could not extract root from:', transposedChord);
             }
           }
         };
         
         display.appendChild(card);
       });
-      
-      console.log('Successfully displayed', display.children.length, 'chord cards');
     }
 
     function playChordScale(chord, scaleName) {
@@ -1136,7 +1133,6 @@ h1 {
       const rootMatch = transposedChord.match(/^[A-G][b#]?/);
       
       if (!rootMatch) {
-        console.error('Could not extract root from:', transposedChord);
         return;
       }
       
@@ -1156,8 +1152,6 @@ h1 {
         const notes = buildScale(rootNote, pattern);
         playScale(notes);
         showScaleOnFretboard(scaleName, notes, rootNote);
-      } else {
-        console.error('Could not find scale pattern for:', scaleName);
       }
     }
 
@@ -1175,7 +1169,6 @@ h1 {
         const rootMatch = transposedChord.match(/^[A-G][b#]?/);
         
         if (!rootMatch) {
-          console.error('Could not extract root from:', transposedChord);
           return;
         }
         
@@ -1568,13 +1561,18 @@ h1 {
     }
 
     // Initialize
-    window.onload = function() {
-      buildFretboard();
-      displayScaleLibrary();
-      setupEarTraining();
-      loadProgress();
-      generateNewProgression();
-    };
+    window.addEventListener('DOMContentLoaded', function() {
+      try {
+        buildFretboard();
+        displayScaleLibrary();
+        setupEarTraining();
+        loadProgress();
+        generateNewProgression();
+      } catch (e) {
+        console.warn('Initialization error:', e);
+        // Continue with partial functionality
+      }
+    });
   </script>
 
 </body>
